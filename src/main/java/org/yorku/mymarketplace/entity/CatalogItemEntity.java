@@ -1,20 +1,22 @@
 package org.yorku.mymarketplace.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Data
 @Entity
-public class CatalogItemEntity{
+public class CatalogItemEntity {
     @Id
-    @GeneratedValue(strategy= GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     Long id;
-    String title;
-    String subTitle;
-    String image;
+    String name;
+    String category;
+    String brand;
+    Long quantity;
     Long price;
     String text;
+    @Lob
+    @Column(length = 1024 * 1024)
+    String image;
+
 }
