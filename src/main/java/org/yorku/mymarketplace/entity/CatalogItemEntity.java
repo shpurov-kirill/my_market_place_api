@@ -10,6 +10,7 @@ public class CatalogItemEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     Long id;
     String name;
+    String model;
     String category;
     String brand;
     Long quantity;

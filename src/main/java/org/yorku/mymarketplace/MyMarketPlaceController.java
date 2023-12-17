@@ -1,14 +1,19 @@
 package org.yorku.mymarketplace;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.yorku.mymarketplace.entity.CatalogItemEntity;
+import org.yorku.mymarketplace.entity.OrderItemEntity;
 import org.yorku.mymarketplace.entity.UserEntity;
 import org.yorku.mymarketplace.repository.CatalogRepository;
+import org.yorku.mymarketplace.repository.OrderItemRepository;
 import org.yorku.mymarketplace.repository.UserRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -16,10 +21,12 @@ import java.util.stream.StreamSupport;
 
 @RestController()
 @Slf4j
+@AllArgsConstructor
 public class MyMarketPlaceController {
 
     private final CatalogRepository catalogRepository;
     private final UserRepository userRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public class UnAuthorizedException extends RuntimeException {
@@ -31,17 +38,16 @@ public class MyMarketPlaceController {
 
     }
 
-    private void checkIfAdmin(String token) {
+    private boolean isAdmin(String token) {
         Optional<UserEntity> byId = userRepository.findById(Long.valueOf(token));
         Optional<UserEntity> userEntity = byId.filter(u -> "admin".equalsIgnoreCase(u.getRole()));
-        if (userEntity.isEmpty()) {
-            throw new UnAuthorizedException("Not authorized");
-        }
+        return !userEntity.isEmpty();
     }
 
-    public MyMarketPlaceController(CatalogRepository catalogRepository, UserRepository userRepository) {
-        this.catalogRepository = catalogRepository;
-        this.userRepository = userRepository;
+    private void checkIfAdmin(String token) {
+        if (!isAdmin(token)) {
+            throw new UnAuthorizedException("Not authorized");
+        }
     }
 
     @GetMapping("/api/health")
@@ -134,5 +140,48 @@ public class MyMarketPlaceController {
         // TODO, check for self + admin
 
         return userRepository.findById(id).get();
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class ReturnOrderItem {
+        Long orderId;
+    }
+
+    @PutMapping(value = "/api/order", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ReturnOrderItem order(@RequestBody List<Long> catalogIds,
+                                 @RequestHeader("authentication") String token) {
+        Long ts = System.currentTimeMillis();
+        catalogIds.forEach(id -> {
+            // -- quantity
+            CatalogItemEntity catalogItemEntity = catalogRepository.findById(id).get();
+            catalogItemEntity.setQuantity(catalogItemEntity.getQuantity() - 1);
+            catalogRepository.save(catalogItemEntity);
+
+            OrderItemEntity orderItemEntity = new OrderItemEntity();
+            orderItemEntity.setItem(catalogItemEntity);
+            orderItemEntity.setOrderId(ts);
+            orderItemEntity.setCreated(LocalDateTime.now());
+
+            UserEntity userEntity = userRepository.findById(Long.valueOf(token)).get();
+
+            orderItemEntity.setUser(userEntity);
+            orderItemRepository.save(orderItemEntity);
+        });
+
+        return new ReturnOrderItem(ts);
+    }
+
+    @GetMapping(value = "/api/orders")
+    public List<OrderItemEntity> orders(@RequestHeader("authentication") String token) {
+
+        if (isAdmin(token)) {
+            List<OrderItemEntity> all = StreamSupport //
+                    .stream(orderItemRepository.findAll().spliterator(), false) //
+                    .collect(Collectors.toList());
+            return all;
+        } else {
+            return orderItemRepository.findByUserId(Long.valueOf(token));
+        }
     }
 }
