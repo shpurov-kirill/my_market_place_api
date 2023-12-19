@@ -4,6 +4,6 @@ services:
     build:
         context: ./
         dockerfile: ./Dockerfile
-    image: my-market-place:v1
+    image: skirill467/my-market-place:v1
     ports:
         - "8080:8080"

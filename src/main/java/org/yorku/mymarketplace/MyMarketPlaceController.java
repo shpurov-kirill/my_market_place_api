@@ -58,7 +58,8 @@ public class MyMarketPlaceController {
     @GetMapping("/api/catalog-items")
     public List<CatalogItemEntity> catalogItems() {
         List<CatalogItemEntity> all = StreamSupport //
-                .stream(catalogRepository.findAll().spliterator(), false) //
+                .stream(catalogRepository.findAll().spliterator(), false)
+                .filter(a->a.getQuantity()>0)
                 .collect(Collectors.toList());
         return all;
     }
