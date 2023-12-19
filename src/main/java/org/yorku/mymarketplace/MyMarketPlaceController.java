@@ -59,6 +59,7 @@ public class MyMarketPlaceController {
     public List<CatalogItemEntity> catalogItems() {
         List<CatalogItemEntity> all = StreamSupport //
                 .stream(catalogRepository.findAll().spliterator(), false) //
+                .filter(a->a.getPrice()>0)
                 .collect(Collectors.toList());
         return all;
     }
